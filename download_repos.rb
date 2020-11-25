@@ -11,12 +11,14 @@
 
 # To run:
 # 1. Make sure you have your Github access token.  You will pass this in as an ENV variable when running.
-# 2. Set the filename/location of the input list of repos in the script below (defaults to 'archive-repos.txt').
-# 3. Set the download location path in the script below.
-# 4. Make sure the specified download location has full read/write access available from the user running the script.
-# 5. Run the script as shown. Note that you will probably want to run in screen mode as it will take a while.
-# 6. For testing purposes, you can set the limit in the script to a small number (like 10) to verify it works.
-#    set to NIL for no limit
+# 2. Set all parameters needed below, just above the code in this file:
+#  a. The filename/location of the input list of repos in the script below (defaults to 'archive-repos.txt').
+#  b. The download location path.
+#  c. The progress log filename and location.
+#  d. The sleep time between repo downloads in seconds (or nil for no pause) - may be needed to avoid API limits
+#  e. For testing purposes, you can set the limit in the script to a small number (like 10) to verify it works, or nil for no limit
+# 3. Make sure the specified download location path set above has full read/write access available from the user running the script.
+# 4. Run the script as shown below. Note that you will probably want to run in screen mode as it will take a while.
 
 # GH_ACCESS_TOKEN=XXXXXXXXXX ruby ./download_repos.rb
 
@@ -39,19 +41,18 @@ require 'down'
 require 'yaml'
 require 'json'
 
+### BEGIN PARAMETERS TO SET ###
 filename = 'archive-repos.txt' # input filename/location listing repos to download
-download_location = '.' # where to download the zip file
-limit = nil # stop after this many repos (useful for testing) ... set to nil for no limit
+download_location = 'output' # where to download the zip file
 progress_log_file = 'repo_progress.yml'
-
-def access_token
-  ENV['GH_ACCESS_TOKEN']
-end
-
-client = Octokit::Client.new(access_token: access_token)
+sleep_time_between_repos = nil # number of seconds to pause between each repo download (as an integer) ... set to nil for no pause
+limit = 4 # stop after this many repos (useful for testing) ... set to nil for no limit
+### END PARAMETERS TO SET ###
 
 puts "Download all repos"
 puts "Input file: #{filename}"
+
+client = Octokit::Client.new(access_token: ENV['GH_ACCESS_TOKEN'])
 
 base_url = 'https://github.com'
 num_success = 0
@@ -136,6 +137,11 @@ repos.each do |repo|
   File.open(progress_log_file, 'a') { |f| f.puts progress.to_yaml }
 
   break if limit && n >= limit
+
+  unless sleep_time_between_repos.nil?
+    puts "...sleeping for #{sleep_time_between_repos} seconds"
+    sleep sleep_time_between_repos
+  end
 
 end
 
